@@ -1,0 +1,202 @@
+:host {
+  display: block;
+  font-family: 'Noto Sans', Arial, sans-serif;
+  color: #1e293b;
+  background: #f1f5f9;
+  min-height: 100vh;
+}
+
+.toolbar {
+  padding: 16px 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  h1 {
+    font-size: 18px;
+    margin: 0;
+    margin-right: 8px;
+  }
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.status {
+  margin: 0;
+  font-size: 13px;
+  color: #475569;
+}
+
+.dashboard {
+  max-width: 900px;
+  margin: 24px auto;
+  padding: 32px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.dashboard-header {
+  margin-bottom: 24px;
+
+  h1 {
+    margin: 0 0 4px;
+    font-size: 26px;
+    color: #0f172a;
+  }
+
+  .subtitle {
+    margin: 0;
+    color: #64748b;
+    font-size: 13px;
+  }
+}
+
+.kpi-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.kpi-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+
+  &.shadowed {
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+  }
+}
+
+.kpi-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.kpi-delta {
+  font-size: 12px;
+
+  &.up {
+    color: #16a34a;
+  }
+
+  &.down {
+    color: #dc2626;
+  }
+}
+
+.chart-card,
+.table-card {
+  margin-bottom: 28px;
+
+  h2 {
+    font-size: 15px;
+    margin: 0 0 12px;
+    color: #0f172a;
+  }
+}
+
+.bar-chart {
+  width: 100%;
+  height: 140px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+thead th {
+  text-align: left;
+  padding: 8px 10px;
+  background: #0f172a;
+  color: #fff;
+  font-weight: 600;
+
+  &.num {
+    text-align: right;
+  }
+}
+
+tbody td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #e2e8f0;
+
+  &.num {
+    text-align: right;
+  }
+}
+
+tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+
+  &.paid {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  &.pending {
+    background: #fef9c3;
+    color: #854d0e;
+  }
+
+  &.refunded {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+}
+
+.dashboard-footer {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+
+  p {
+    margin: 0;
+    font-size: 11px;
+    color: #94a3b8;
+  }
+}

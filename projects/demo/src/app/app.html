@@ -1,0 +1,87 @@
+<div class="toolbar">
+  <h1>{{ title() }}</h1>
+  <div class="actions">
+    <button (click)="exportPortrait()" [disabled]="busy()">Export A4 Portrait</button>
+    <button (click)="exportLandscape()" [disabled]="busy()">Export A4 Landscape</button>
+    <button (click)="exportWithHeaderFooter()" [disabled]="busy()">Export with Header/Footer</button>
+    <button (click)="exportDebug()" [disabled]="busy()">Export (debug mode)</button>
+  </div>
+  @if (lastMessage()) {
+    <p class="status">{{ lastMessage() }}</p>
+  }
+</div>
+
+<div id="dashboard" class="dashboard">
+  <header class="dashboard-header">
+    <h1>Sales Dashboard</h1>
+    <p class="subtitle">Quarterly performance overview &mdash; generated from live Angular DOM, not a screenshot.</p>
+  </header>
+
+  <section class="kpi-row">
+    <div class="kpi-card">
+      <span class="kpi-label">Total Revenue</span>
+      <span class="kpi-value">{{ totalRevenue() }}</span>
+      <span class="kpi-delta up">&#9650; 12.4% vs last quarter</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Total Orders</span>
+      <span class="kpi-value">{{ orders.length }}</span>
+      <span class="kpi-delta up">&#9650; 8 new this week</span>
+    </div>
+    <div class="kpi-card shadowed">
+      <span class="kpi-label">Avg. Order Value</span>
+      <span class="kpi-value">{{ averageOrderValue() }}</span>
+      <span class="kpi-delta down">&#9660; 2.1% vs last quarter</span>
+    </div>
+  </section>
+
+  <section class="chart-card">
+    <h2>Weekly Orders</h2>
+    <svg viewBox="0 0 350 140" class="bar-chart" role="img" aria-label="Weekly orders bar chart">
+      <line x1="0" y1="120" x2="350" y2="120" stroke="#cbd5e1" stroke-width="1"></line>
+      @for (v of chartBars; track $index) {
+        <rect
+          [attr.x]="20 + $index * 46"
+          [attr.y]="120 - v"
+          width="28"
+          [attr.height]="v"
+          rx="4"
+          ry="4"
+          fill="#2563eb"
+        ></rect>
+      }
+    </svg>
+  </section>
+
+  <section class="table-card">
+    <h2>Recent Orders</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Invoice</th>
+          <th>Customer</th>
+          <th>Email</th>
+          <th class="num">Amount</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (o of orders; track o.id) {
+          <tr>
+            <td>{{ o.id }}</td>
+            <td>{{ o.customer }}</td>
+            <td>{{ o.email }}</td>
+            <td class="num">{{ formatInr(o.amount) }}</td>
+            <td>
+              <span class="badge" [ngClass]="o.status.toLowerCase()">{{ o.status }}</span>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </section>
+
+  <footer class="dashboard-footer">
+    <p>Generated with ngx-pdf-export &mdash; a DOM-aware, client-side PDF exporter for Angular.</p>
+  </footer>
+</div>
