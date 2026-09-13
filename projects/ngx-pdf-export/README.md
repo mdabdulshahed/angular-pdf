@@ -33,26 +33,60 @@ rasterized — and only that one element, never the whole page.
 
 - `PdfExportDirective` (`[pdfExport]`) for template-driven export.
 - `toBlob()` / `download()` / `export()` on `PdfExportService`.
-- `registerFont()` for custom TTF/OTF fonts (required for non-Latin
-  Unicode text — see the Unicode note below).
+- `registerFont()` for custom TTF/OTF fonts — see "Fonts" below; this
+  matters for *any* app that cares about the PDF looking like the screen,
+  not just non-Latin text.
 - Multi-page pagination with `keepTogether`, `break-before`/`break-after`,
   and repeated table headers.
 - Headers/footers with page numbers (`Page X of Y`).
 - A `debug: true` mode that outlines page boundaries and rasterized
   fallback elements directly on the output PDF.
 
-## Unicode note
+## Fonts
 
-The default (Standard-14) fonts only support Latin-1-ish text. For ₹,
-Arabic, Devanagari, CJK, or most accented characters, register a Unicode
-TTF/OTF font first:
+By default, text is drawn with Helvetica/Times/Courier (the PDF
+"Standard-14" fonts) — every PDF reader already has them, so they never
+need to be embedded. But they are **not** your app's actual font, and their
+character widths don't match it either — so unregistered text can both
+look different and end up positioned slightly differently than the same
+line on screen (a heading's right edge landing closer to or further from
+whatever sits next to it, for example).
+
+To make the PDF match the screen, register your app's actual font file(s),
+using the same `font-family` name your CSS uses:
+
+```ts
+await pdf.registerFont({ family: 'Inter Tight', src: '/fonts/InterTight-Regular.ttf', weight: 400 });
+await pdf.registerFont({ family: 'Inter Tight', src: '/fonts/InterTight-Bold.ttf', weight: 700 });
+```
+
+Use a **static** font file (a single weight/style, e.g. `Inter-Regular.ttf`),
+not a variable font (e.g. `Inter[wght].ttf`) — `@pdf-lib/fontkit` does not
+subset variable fonts correctly. If you only have a variable font, instance
+a static weight first: `fonttools varLib.instancer -o Inter-Regular.ttf
+"Inter[wght].ttf" wght=400`.
+
+If a `font-family` your content uses is never registered, the library
+substitutes the nearest Standard-14 font and logs a warning naming exactly
+which family was substituted, so this is never a silent surprise.
+
+### Unicode, emoji, and multi-script text
+
+The Standard-14 fonts only cover Latin-1-ish text. For ₹, Arabic,
+Devanagari, CJK, emoji, or most accented characters, register a
+Unicode-capable font:
 
 ```ts
 await pdf.registerFont({ family: 'Noto Sans', src: '/fonts/NotoSans-Regular.ttf', weight: 400 });
 ```
 
-Use a **static** font file (a single weight/style), not a variable font —
-`@pdf-lib/fontkit` does not subset variable fonts correctly.
+Every registered font also covers every *other* registered font's missing
+glyphs — register an emoji font once, anywhere, under any family name, and
+it covers emoji throughout the whole document, even inside text styled
+with a completely different `font-family`. This mirrors how a browser's
+own CSS font stack silently falls back to a system emoji font per
+character; `registerFont()` doesn't take a stack, so instead every
+registered font is available as a fallback for every other one.
 
 ## Documentation
 
