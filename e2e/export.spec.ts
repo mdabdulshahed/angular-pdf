@@ -111,4 +111,27 @@ test.describe('ngx-pdf-export demo: real, selectable PDF output', () => {
     const text = extractText(filePath);
     expect(text).toContain('Sales Dashboard');
   });
+
+  test('a font registered under an unrelated family still covers another font\'s missing glyph (emoji fallback chain)', async ({ page }) => {
+    // The demo registers "Noto Emoji" but no element's font-family is ever
+    // set to it -- this only passes if render/fonts.ts's cross-font
+    // fallback chain actually kicks in for the footer's emoji character,
+    // which the primary (Noto Sans) font doesn't have a glyph for.
+    const warnings: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'warning' && msg.text().includes('has no glyph')) warnings.push(msg.text());
+    });
+
+    const dir = mkdtempSync(path.join(tmpdir(), 'ngx-pdf-export-'));
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Export A4 Portrait' }).click(),
+    ]);
+    const filePath = path.join(dir, 'out.pdf');
+    await download.saveAs(filePath);
+
+    const text = extractText(filePath);
+    expect(text).toContain('\u{1F389}'); // the party-popper emoji, extracted as real text
+    expect(warnings.some((w) => w.includes('\u{1F389}'))).toBe(false);
+  });
 });

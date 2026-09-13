@@ -37,6 +37,10 @@ export class App implements OnInit {
     try {
       await this.pdf.registerFont({ family: 'Noto Sans', src: 'fonts/NotoSans-Regular.ttf', weight: 400 });
       await this.pdf.registerFont({ family: 'Noto Sans', src: 'fonts/NotoSans-Bold.ttf', weight: 700 });
+      // Registered under its own family, never referenced by any element's
+      // font-family -- proves the cross-font fallback chain (any registered
+      // font can cover any other font's missing glyphs, see docs/api-design.md).
+      await this.pdf.registerFont({ family: 'Noto Emoji', src: 'fonts/NotoEmoji-Regular.ttf', weight: 400 });
     } catch (err) {
       console.error('Failed to register demo font', err);
     }

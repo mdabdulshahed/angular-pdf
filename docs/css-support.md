@@ -76,14 +76,22 @@ element** (not the page) being rasterized via the `foreignObject` fallback
   ancestor are rasterized with it
 - `::before`/`::before`-generated content, `::marker`
 - CSS custom scrollbars, `mix-blend-mode`, `clip-path` beyond simple insets
-- Web fonts loaded via `@font-face` that the app already applies on screen
-  render with the correct glyphs *in the browser*, but that were not also
-  explicitly `registerFont()`-ed with the library (see `fonts` in
-  `api-design.md`) — the PDF falls back to the nearest Standard-14 font,
-  which will look visually different from the on-screen render. This is
-  not auto-rasterized (it would defeat selectable text for the most common
-  real-world case — a custom brand font), it's a text-fidelity warning
-  instead.
+- Any font-family the browser rendered on screen (whether via `@font-face`,
+  a system font, or an unloaded fallback that quietly resolved to whatever
+  the OS had available) that was not also explicitly `registerFont()`-ed
+  with the library (see `fonts` in `api-design.md`) — the PDF falls back to
+  the nearest Standard-14 font. This is not auto-rasterized (it would
+  defeat selectable text for the most common real-world case — a custom
+  brand font); instead, `render/fonts.ts` emits a warning naming the
+  unregistered family and the Standard-14 font substituted for it (skipped
+  when the CSS family already names a Standard-14 base font, e.g.
+  `font-family: Arial`, since that substitution is the intended choice,
+  not a mismatch). Standard-14 metrics (fixed since ~1985 PostScript
+  Helvetica/Times/Courier) essentially never match the real font's
+  character widths, and the gap compounds with font size and any
+  `letter-spacing` — this is the single most common cause of a PDF's text
+  visibly ending in a different place than the same line does on screen,
+  even though every other layout value between the two matches exactly.
 
 ## Explicitly out of scope for v1 (see `roadmap.md` Phase 3)
 
@@ -105,10 +113,14 @@ Standard-14 limitation, not a bug in this library.
 
 For any non-Latin-1 content, register a Unicode-capable TTF/OTF font (e.g.
 Noto Sans for broad Latin/₹/Cyrillic coverage, Noto Sans Arabic for
-Arabic/Urdu) via `pdf.registerFont(...)` — see `api-design.md`. Once
-registered and embedded (with subsetting, via `@pdf-lib/fontkit`), any
-Unicode codepoint present in that font's glyph table renders correctly and
-remains selectable/searchable text.
+Arabic/Urdu, Noto Emoji for emoji) via `pdf.registerFont(...)` — see
+`api-design.md`. Once registered and embedded (with subsetting, via
+`@pdf-lib/fontkit`), any Unicode codepoint present in that font's glyph
+table renders correctly and remains selectable/searchable text. Registered
+fonts also act as a fallback chain for each other's missing glyphs, not
+just for the specific `font-family` they were registered under — see
+`api-design.md`'s "Every registered font also covers every other font's
+missing glyphs."
 
 One further honest limitation: registering an Arabic/Urdu font makes the
 *glyphs* available, but v1 does not perform Arabic contextual shaping
