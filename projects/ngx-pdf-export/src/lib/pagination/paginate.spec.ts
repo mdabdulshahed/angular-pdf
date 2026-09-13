@@ -33,6 +33,13 @@ function block(id: string, y: number, height: number, children: TextRunNode[] = 
   };
 }
 
+function blockWithBackground(id: string, y: number, height: number, children: TextRunNode[] = []): BlockNode {
+  return {
+    ...block(id, y, height, children),
+    paint: { opacity: 1, backgroundColor: { r: 240, g: 240, b: 240, a: 1 } },
+  };
+}
+
 function doc(children: DocumentNode['children']): DocumentNode {
   return { flowWidthPt: 100, flowHeightPt: 10000, children };
 }
@@ -101,6 +108,44 @@ describe('paginate: keepTogether (break-inside: avoid)', () => {
     const container = block('tall', 0, CH + 30, [child1, child2], { breakInside: 'avoid' });
     const result = paginate(doc([container]), { contentHeightPt: CH });
     expect(result.pages.length).toBeGreaterThan(1);
+  });
+});
+
+describe('paginate: paint order', () => {
+  it('draws a non-atomic container background before its own text children, never on top of them', () => {
+    // Regression test: a container's background primitive must be pushed
+    // *before* its children's primitives in the page's primitive list, so
+    // it paints behind them -- otherwise an opaque background fill drawn
+    // after its own text/icon children completely hides them. This is
+    // easy to get backwards because the background's true extent can only
+    // be known once children are placed for multi-page containers, which
+    // tempts placing it last; see docs/pagination.md.
+    const child1 = textNode('label', 10, 10, 'Total Revenue');
+    const child2 = textNode('value', 25, 14, '₹1,39,388');
+    const card = blockWithBackground('card', 0, 50, [child1, child2]);
+    const result = paginate(doc([card]), { contentHeightPt: CH });
+
+    const primitives = result.pages[0].primitives;
+    const bgIndex = primitives.findIndex((p) => p.kind === 'block' && p.node.id === 'card');
+    const labelIndex = primitives.findIndex((p) => p.kind === 'text' && (p.node as TextRunNode).text === 'Total Revenue');
+    const valueIndex = primitives.findIndex((p) => p.kind === 'text' && (p.node as TextRunNode).text === '₹1,39,388');
+
+    expect(bgIndex).toBeGreaterThanOrEqual(0);
+    expect(labelIndex).toBeGreaterThan(bgIndex);
+    expect(valueIndex).toBeGreaterThan(bgIndex);
+  });
+
+  it('draws a keepTogether container background before its children too', () => {
+    const child = textNode('label', 10, 10, 'Explore the Docs');
+    const pill = blockWithBackground('pill', 0, 27, [child]);
+    pill.break = { ...pill.break, breakInside: 'avoid' };
+    const result = paginate(doc([pill]), { contentHeightPt: CH });
+
+    const primitives = result.pages[0].primitives;
+    const bgIndex = primitives.findIndex((p) => p.kind === 'block' && p.node.id === 'pill');
+    const textIndex = primitives.findIndex((p) => p.kind === 'text');
+
+    expect(bgIndex).toBeLessThan(textIndex);
   });
 });
 

@@ -22,10 +22,26 @@ property:
 |---|---|
 | Layout | `display: block/inline/inline-block/flex`, `flex-direction`, `justify-content`, `align-items`, `gap`, `width/height`, `min/max-width/height`, `margin`, `padding`, `position: static/relative/absolute` (fixed via `getBoundingClientRect`), `top/right/bottom/left` (as an outcome of the above), `overflow: visible/hidden` (hidden clips paint to the element's rect) |
 | Border/background | `border` (all sides, width/style/color, `solid`/`dashed`/`dotted`), `border-radius` (per-corner), `background-color`, `background-image: url(...)` with `no-repeat`/`cover`/`contain` (a plain raster background image; not a gradient) |
-| Color | `color`, `opacity` (applied per-node as PDF fill/stroke alpha) |
+| Color | `color`, `opacity` (applied per-node as PDF fill/stroke alpha), any valid CSS color syntax `getComputedStyle` can return — legacy `rgb()`/`rgba()`/hex/named colors via a fast regex path, and CSS Color 4 forms (`color-mix()`, `oklch()`, `oklab()`, `lab()`, `lch()`, the `color(<space> ...)` function) via a canvas-based fallback resolver (`dom/color.ts`) |
 | Text | `font-family`, `font-size`, `font-weight`, `font-style`, `line-height`, `letter-spacing`, `text-align: left/right/center/justify`, `white-space: normal/nowrap/pre`, word wrapping (read from the browser's own line boxes), `text-decoration: underline/line-through` |
 | Media | `<img>` (PNG/JPEG/data URL/same-origin), `<svg>` limited to `rect/circle/ellipse/line/polyline/polygon/path/g`, `<canvas>` (rasterized — see below), `<table>`/`<thead>`/`<tbody>`/`<tr>`/`<th>`/`<td>` |
 | Pagination | `break-before`/`break-after`/`break-inside` (and legacy `page-break-*`), plus the library's own `keepTogether` option |
+
+**Why the color resolver matters in practice:** `getComputedStyle()` does
+not normalize every color to `rgb()`/`rgba()` the way it always used to.
+Any color computed from a CSS Color 4 function — most commonly
+`color-mix()`, which many current design systems (including Angular's own
+starter template) use for tinted/muted palette colors — is returned
+verbatim in its own serialization, e.g. `color-mix(in srgb, blue 50%,
+transparent)` computes to `color(srgb 0 0 1 / 0.5)`, not to an `rgba()`
+string. A parser that only handles `rgb()`/`rgba()` silently treats every
+such color as unparseable — dropping backgrounds and SVG fills entirely,
+and falling back text to black — with no error, because "color not found"
+looks identical to "element has no background." `dom/color.ts` handles this
+by resolving anything the fast path doesn't recognize through a 1x1 canvas
+(`fillStyle` + `getImageData`), which is correct for *any* syntactically
+valid CSS color regardless of color space, since that's exactly what the
+canvas rasterizer already has to do internally.
 
 `<canvas>` is intentionally always rasterized — its content is already a
 bitmap the canvas API produced; there is no vector source to recover in the
