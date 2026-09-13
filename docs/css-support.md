@@ -27,6 +27,16 @@ property:
 | Media | `<img>` (PNG/JPEG/data URL/same-origin), `<svg>` limited to `rect/circle/ellipse/line/polyline/polygon/path/g`, `<canvas>` (rasterized — see below), `<table>`/`<thead>`/`<tbody>`/`<tr>`/`<th>`/`<td>` |
 | Pagination | `break-before`/`break-after`/`break-inside` (and legacy `page-break-*`), plus the library's own `keepTogether` option |
 
+**A `viewBox` with a non-zero origin (e.g. `viewBox="0 -960 960 960"`, the
+convention Material Symbols and many other icon sets use) is fully
+supported** for every shape, including `<path>` — `dom/svg-parser.ts` scales
+coordinates but deliberately does not rewrite the viewBox origin into a
+path's `d` string (a path can mix absolute and relative commands, and a
+relative command's delta must never be shifted). The origin offset is
+instead applied once, as the anchor point passed to the PDF renderer's
+`drawSvgPath` call (`render/svg-path-anchor.ts`) — a rigid translation of
+the whole already-scaled path, which is safe regardless of command mix.
+
 **Why the color resolver matters in practice:** `getComputedStyle()` does
 not normalize every color to `rgb()`/`rgba()` the way it always used to.
 Any color computed from a CSS Color 4 function — most commonly

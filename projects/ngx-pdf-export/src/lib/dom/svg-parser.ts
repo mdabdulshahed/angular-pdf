@@ -99,18 +99,28 @@ function walk(el: Element, sx: number, sy: number, vbX: number, vbY: number, out
         });
         break;
       }
+      // A non-zero viewBox origin (common for icon sets that author with
+      // viewBox="0 -960 960 960") needs to shift every coordinate by
+      // (-vbX, -vbY). For rect/circle/ellipse/line above that's just one
+      // subtraction per numeric attribute, but a path's `d` string mixes
+      // absolute and *relative* commands -- rewriting every literal would
+      // incorrectly shift relative deltas too, which are meant to stay
+      // untouched. A viewBox origin offset is a rigid translation of the
+      // whole shape, so it's applied once at render time (originOffsetXPt/
+      // originOffsetYPt) as the anchor point passed to drawSvgPath,
+      // instead of touching the path data itself.
       case 'polyline':
       case 'polygon': {
         const points = (child.getAttribute('points') || '').trim();
         if (!points) break;
         const d = pointsToPathData(points, tag === 'polygon');
-        out.push({ op: 'path', d: scalePathData(offsetPathOrigin(d, vbX, vbY), sx, sy), paint });
+        out.push({ op: 'path', d: scalePathData(d, sx, sy), paint, originOffsetXPt: vbX * sx, originOffsetYPt: vbY * sy });
         break;
       }
       case 'path': {
         const d = child.getAttribute('d') || '';
         if (!d) break;
-        out.push({ op: 'path', d: scalePathData(d, sx, sy), paint });
+        out.push({ op: 'path', d: scalePathData(d, sx, sy), paint, originOffsetXPt: vbX * sx, originOffsetYPt: vbY * sy });
         break;
       }
     }
@@ -158,8 +168,3 @@ function pointsToPathData(points: string, close: boolean): string {
   return close ? d + 'Z' : d;
 }
 
-function offsetPathOrigin(d: string, vbX: number, vbY: number): string {
-  if (!vbX && !vbY) return d;
-  // Points already carry absolute coordinates; shift by viewBox origin using the same scaler with a translate pass.
-  return d.replace(/(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/g, (_m, x, y) => `${Number(x) - vbX} ${Number(y) - vbY}`);
-}

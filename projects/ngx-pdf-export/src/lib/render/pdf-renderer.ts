@@ -5,6 +5,7 @@ import { Page, PagePrimitive } from '../pagination/paginate';
 import { FontRegistry } from '../fonts/font-registry';
 import { FontResolver } from './fonts';
 import { PdfExportWarning } from '../dom/inspect';
+import { svgPathAnchor } from './svg-path-anchor';
 
 export interface RenderGeometry {
   widthPt: number;
@@ -398,8 +399,14 @@ function drawSvgCommand(page: PDFPage, cmd: SvgDrawCommand, originX: number, ori
         page.drawLine({ start: { x: originX + cmd.x1, y: originTopY - cmd.y1 }, end: { x: originX + cmd.x2, y: originTopY - cmd.y2 }, thickness: drawOpts.borderWidth, color: drawOpts.borderColor, opacity: drawOpts.borderOpacity });
       }
       break;
-    case 'path':
-      page.drawSvgPath(cmd.d, { ...drawOpts, x: originX, y: originTopY });
+    case 'path': {
+      // See dom/svg-parser.ts and render/svg-path-anchor.ts: a non-zero
+      // viewBox origin is applied here, as a shift of the anchor point,
+      // rather than baked into cmd.d -- safe regardless of whether the
+      // path mixes absolute/relative commands.
+      const anchor = svgPathAnchor(originX, originTopY, cmd.originOffsetXPt, cmd.originOffsetYPt);
+      page.drawSvgPath(cmd.d, { ...drawOpts, x: anchor.x, y: anchor.y });
       break;
+    }
   }
 }
