@@ -76,6 +76,20 @@ Orientation swaps width/height before margins are applied.
    corner, which is rare in practice (containers this large relative to a
    page are usually marked `keepTogether` anyway).
 
+   Critically, the container's background/border primitive is placed
+   **before** its children's primitives, in every case (atomic and
+   non-atomic alike) — matching the paint order every browser already uses
+   (background, then content) and ensuring a container never covers its own
+   text/icons. For a non-atomic container this means the background's
+   extent is computed from its own rect up front, rather than being able to
+   expand afterward to cover a gap a child's own internal page-break might
+   inject (that would require knowing the child's final position before the
+   background is emitted, which conflicts with emitting the background
+   first). This is a deliberate trade-off: correct z-order for the
+   overwhelmingly common case (any card, pill, or badge with both a
+   background and content) matters far more than background continuity
+   across an already-rare nested mid-container break.
+
 ## `keepTogether` / break controls
 
 Resolved during the `LayoutTree` build (`layout/break-rules.ts`), from,

@@ -120,6 +120,34 @@ button {
   }
 }
 
+.modern-colors-card {
+  margin-bottom: 28px;
+
+  h2 {
+    font-size: 15px;
+    margin: 0 0 8px;
+    color: #0f172a;
+  }
+}
+
+.mix-text {
+  color: color-mix(in srgb, #7c3aed 70%, black);
+  font-size: 12px;
+  margin: 0 0 10px;
+}
+
+.mix-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #2563eb 15%, white);
+  color: color-mix(in srgb, #2563eb 80%, black);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .chart-card,
 .table-card {
   margin-bottom: 28px;

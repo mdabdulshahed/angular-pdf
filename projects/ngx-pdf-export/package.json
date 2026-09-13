@@ -1,6 +1,6 @@
 {
   "name": "ngx-pdf-export",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "DOM-aware, client-side Angular library that exports rendered HTML into a real, text-selectable PDF (no screenshot rasterization).",
   "license": "MIT",
   "keywords": [
@@ -11,7 +11,7 @@
     "html-to-pdf",
     "client-side-pdf"
   ],
-  "author": "Md Abdul Shahed",
+  "author": "Mohammed Abdul Shahed",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mdabdulshahed/angular-pdf.git",

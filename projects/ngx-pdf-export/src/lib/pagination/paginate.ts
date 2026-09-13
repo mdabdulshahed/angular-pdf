@@ -165,13 +165,24 @@ export function paginate(doc: DocumentNode, contentBox: PageContentBox): Paginat
       }
     }
 
+    // Paint the container's own background/border *before* its children, so
+    // children are always drawn on top -- matching how every browser paints
+    // a box (background, then content) and avoiding the container's fill
+    // covering its own text/icons. This means the background is sized from
+    // the container's own rect up front, rather than being able to expand
+    // to cover a gap a child's own internal page-break might later inject;
+    // that was a deliberate trade-off (see docs/pagination.md) once this
+    // ordering bug was found: correct z-order for the overwhelmingly common
+    // case (any card/pill with both a background and content) matters far
+    // more than background continuity across an already-rare nested break.
     const shiftAtStart = state.shift;
     const adjustedTop = node.rect.y + shiftAtStart;
+    const adjustedBottomEstimate = node.rect.y + node.rect.height + shiftAtStart;
+    placeContainerBackground(node, adjustedTop, adjustedBottomEstimate, clip);
     const childClip = node.type === 'group' && node.clip ? { x: node.rect.x, y: adjustedTop, width: node.rect.width, height: node.rect.height } : clip;
     for (const child of node.children) placeNode(child, childClip);
     const shiftAtEnd = state.shift;
     const adjustedBottom = node.rect.y + node.rect.height + shiftAtEnd;
-    placeContainerBackground(node, adjustedTop, adjustedBottom, clip);
     state.hasPlaced = true;
 
     if (node.break.breakAfter === 'page') {
