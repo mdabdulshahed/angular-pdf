@@ -45,6 +45,17 @@ export class FontRegistry {
   hasAnyFontFor(family: string): boolean {
     return this.sources.some((s) => s.family.toLowerCase() === family.toLowerCase());
   }
+
+  /**
+   * Every distinct registered font, in registration order. Used to build a
+   * fallback chain: a character the primary resolved font can't encode may
+   * still be covered by some *other* registered font (e.g. an emoji or
+   * non-Latin-script font registered for its own text elsewhere in the
+   * document) -- see render/fonts.ts `resolveFallbackCandidates`.
+   */
+  getAllSources(): readonly RegisteredFontSource[] {
+    return this.sources;
+  }
 }
 
 async function fetchBytes(url: string): Promise<ArrayBuffer> {

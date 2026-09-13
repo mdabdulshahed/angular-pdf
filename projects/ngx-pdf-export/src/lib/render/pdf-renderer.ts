@@ -30,7 +30,7 @@ export interface HeaderFooterConfig {
 export async function renderPdf(pages: Page[], fontRegistry: FontRegistry, options: RenderOptions, headerFooter?: HeaderFooterConfig): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
   pdfDoc.registerFontkit(fontkit);
-  const fontResolver = new FontResolver(pdfDoc, fontRegistry);
+  const fontResolver = new FontResolver(pdfDoc, fontRegistry, (message) => options.onWarning({ message, elementDescription: '(font resolution)' }));
   const imageCache = new Map<string, PDFImage>();
   const warnedGlyphs = new Set<string>();
 
@@ -234,13 +234,37 @@ async function drawText(page: PDFPage, node: TextRunNode, rect: Rect, options: R
   const baselineY = options.geometry.heightPt - (options.geometry.marginTopPt + rect.y + node.baselineOffsetPt);
   const color = rgbFrom(node.color);
   const opacity = node.color.a;
+  const onWarning = (msg: string) => options.onWarning({ message: msg, elementDescription: node.text.slice(0, 40) });
 
-  const textWidth = measureText(font, node.text, size, node.letterSpacingPt);
+  let textWidth: number;
+  let plan: GlyphPlan | null = null;
+
+  if (node.letterSpacingPt === 0 && canEncodeAll(font, node.text)) {
+    // Fast path: the primary font covers the whole run and there's no
+    // letter-spacing to hand-position, so draw it as one Tj like any
+    // ordinary run -- most text never needs the per-character fallback
+    // machinery below.
+    textWidth = safeWidth(font, node.text, size);
+  } else {
+    // Either letter-spacing needs per-character positioning anyway, or the
+    // primary font is missing at least one glyph -- in the latter case,
+    // check every *other* registered font before giving up on a
+    // character, the same way a browser's own font-stack fallback would.
+    // See render/fonts.ts `fallbackCandidatesFor`.
+    const fallbacks = await fontResolver.fallbackCandidatesFor(font);
+    plan = buildGlyphPlan(node.text, font, fallbacks, size, node.letterSpacingPt);
+    textWidth = plan.totalWidth;
+  }
+
   let x = p.x;
   if (node.align === 'center') x = p.x + Math.max(0, (rect.width - textWidth) / 2);
   else if (node.align === 'right') x = p.x + Math.max(0, rect.width - textWidth);
 
-  drawGlyphsSafely(page, font, node.text, x, baselineY, size, color, opacity, node.letterSpacingPt, warnedGlyphs, (msg) => options.onWarning({ message: msg, elementDescription: node.text.slice(0, 40) }));
+  if (plan) {
+    drawGlyphPlan(page, plan, x, baselineY, size, color, opacity, node.letterSpacingPt, warnedGlyphs, onWarning);
+  } else {
+    page.drawText(node.text, { x, y: baselineY, size, font, color, opacity });
+  }
 
   if (node.decoration.underline) {
     page.drawLine({ start: { x, y: baselineY - size * 0.08 }, end: { x: x + textWidth, y: baselineY - size * 0.08 }, thickness: Math.max(0.5, size * 0.05), color, opacity });
@@ -250,24 +274,36 @@ async function drawText(page: PDFPage, node: TextRunNode, rect: Rect, options: R
   }
 }
 
-function measureText(font: PDFFont, text: string, size: number, letterSpacingPt: number): number {
-  let w = 0;
-  for (const ch of text) w += safeWidth(font, ch, size);
-  return w + letterSpacingPt * Math.max(0, [...text].length - 1);
+interface GlyphPlanEntry {
+  ch: string;
+  font: PDFFont | null; // null = no font (primary or fallback) could encode it
+  width: number;
 }
 
-function safeWidth(font: PDFFont, ch: string, size: number): number {
-  try {
-    return font.widthOfTextAtSize(ch, size);
-  } catch {
-    return size * 0.5;
-  }
+interface GlyphPlan {
+  entries: GlyphPlanEntry[];
+  totalWidth: number;
 }
 
-function drawGlyphsSafely(
+function buildGlyphPlan(text: string, primary: PDFFont, fallbacks: PDFFont[], size: number, letterSpacingPt: number): GlyphPlan {
+  const chars = Array.from(text);
+  const entries: GlyphPlanEntry[] = chars.map((ch) => {
+    if (canEncodeAll(primary, ch)) {
+      return { ch, font: primary, width: safeWidth(primary, ch, size) };
+    }
+    const fallback = fallbacks.find((f) => canEncodeAll(f, ch));
+    if (fallback) {
+      return { ch, font: fallback, width: safeWidth(fallback, ch, size) };
+    }
+    return { ch, font: null, width: size * 0.5 };
+  });
+  const totalWidth = entries.reduce((sum, e) => sum + e.width, 0) + letterSpacingPt * Math.max(0, entries.length - 1);
+  return { entries, totalWidth };
+}
+
+function drawGlyphPlan(
   page: PDFPage,
-  font: PDFFont,
-  text: string,
+  plan: GlyphPlan,
   x0: number,
   y: number,
   size: number,
@@ -277,29 +313,55 @@ function drawGlyphsSafely(
   warnedGlyphs: Set<string>,
   onWarning: (message: string) => void,
 ): void {
-  if (letterSpacingPt === 0 && canEncodeAll(font, text)) {
-    page.drawText(text, { x: x0, y, size, font, color, opacity });
-    return;
-  }
   let x = x0;
-  for (const ch of text) {
-    if (canEncodeAll(font, ch)) {
-      page.drawText(ch, { x, y, size, font, color, opacity });
-    } else if (!warnedGlyphs.has(ch)) {
-      warnedGlyphs.add(ch);
-      onWarning(`Character "${ch}" has no glyph in the resolved font and was skipped. Register a Unicode-capable font via registerFont() for this text.`);
+  for (const entry of plan.entries) {
+    if (entry.font) {
+      page.drawText(entry.ch, { x, y, size, font: entry.font, color, opacity });
+    } else if (!warnedGlyphs.has(entry.ch)) {
+      warnedGlyphs.add(entry.ch);
+      onWarning(`Character "${entry.ch}" has no glyph in the resolved font or any registered fallback font and was skipped. Register a font with coverage for this character via registerFont().`);
     }
-    x += safeWidth(font, ch, size) + letterSpacingPt;
+    x += entry.width + letterSpacingPt;
   }
 }
 
-function canEncodeAll(font: PDFFont, text: string): boolean {
+function safeWidth(font: PDFFont, text: string, size: number): number {
   try {
-    font.widthOfTextAtSize(text, 10);
-    return true;
+    return font.widthOfTextAtSize(text, size);
   } catch {
-    return false;
+    return size * 0.5 * Array.from(text).length;
   }
+}
+
+const characterSetCache = new WeakMap<PDFFont, Set<number>>();
+
+function characterSetOf(font: PDFFont): Set<number> {
+  let set = characterSetCache.get(font);
+  if (!set) {
+    set = new Set(font.getCharacterSet());
+    characterSetCache.set(font, set);
+  }
+  return set;
+}
+
+/**
+ * Whether every character in `text` has a real glyph in `font` -- not
+ * "does drawing/measuring it throw." For pdf-lib's Standard-14 fonts,
+ * `widthOfTextAtSize` does throw on an out-of-WinAnsi character, but for a
+ * *custom embedded* font (any `registerFont()`-ed TTF/OTF), it does not:
+ * TrueType/OpenType cmap lookups for a missing codepoint silently resolve
+ * to glyph 0 (.notdef, the "tofu box") and pdf-lib happily measures/draws
+ * that -- so a try/catch around widthOfTextAtSize only ever catches the
+ * Standard-14 case, silently missing every custom-font gap and defeating
+ * the whole point of the fallback-font search below. `getCharacterSet()`
+ * reports the font's real codepoint coverage regardless of font kind.
+ */
+function canEncodeAll(font: PDFFont, text: string): boolean {
+  const set = characterSetOf(font);
+  for (const ch of text) {
+    if (!set.has(ch.codePointAt(0)!)) return false;
+  }
+  return true;
 }
 
 // ---- images ----

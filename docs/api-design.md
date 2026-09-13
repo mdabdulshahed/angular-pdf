@@ -132,6 +132,46 @@ nearest weight (CSS-style fallback: exact family match, then nearest
 registered weight for that family, then Standard-14 by generic family
 guess, e.g. serif → Times, monospace → Courier, else → Helvetica).
 
+**Every registered font also covers every other font's missing glyphs.**
+A real browser rendering `font-family: "Inter Tight", ..., "Apple Color
+Emoji"` silently pulls a glyph from the last font in that stack when
+`"Inter Tight"` doesn't have it — that's how `🎉` in `<p>...running! 🎉</p>`
+renders on screen even though the app's primary font has no emoji glyphs.
+`registerFont()` doesn't ask for a font *stack* (there's no CSS to mirror
+one from), but the practical effect is the same: register **any** font,
+for any purpose, and a character the primary resolved font can't encode is
+retried against every other registered font before the library gives up
+and skips it with a warning (`render/fonts.ts`'s `fallbackCandidatesFor`).
+So registering an emoji font makes emoji work everywhere in the document,
+not just in text explicitly styled with that font-family:
+
+```ts
+await pdf.registerFont({ family: 'Noto Emoji', src: '/fonts/NotoEmoji-Regular.ttf', weight: 400 });
+```
+
+Two honest caveats: (1) this must be the **monochrome** "Noto Emoji"
+family, not "Noto Color Emoji" — PDF text-showing operators paint glyph
+outlines in the current fill color, so even a registered color-emoji font
+would render in whatever text color surrounds it, not its native colors;
+a full-color result would require embedding emoji as small raster images
+per character, which this library does not do. (2) Noto Emoji, like most
+system emoji fonts, ships only as a variable font upstream — instance it to
+a static weight first (e.g. `fonttools varLib.instancer -o
+NotoEmoji-Regular.ttf NotoEmoji[wght].ttf wght=400`), per the variable-font
+caveat above.
+
+Glyph coverage is checked via `PDFFont.getCharacterSet()`, not by trying to
+draw/measure the character and seeing if it throws. It's tempting to use
+`widthOfTextAtSize` in a try/catch for this (a missing glyph *sounds* like
+an error condition), but it only actually throws for pdf-lib's Standard-14
+fonts, whose fixed WinAnsi encoding table makes out-of-range characters
+easy to reject upfront. A *custom embedded* font (anything registered via
+`registerFont()`) resolves a missing codepoint the way TrueType/OpenType
+cmap lookups always do — silently, to glyph 0 (`.notdef`, the "tofu box")
+— and pdf-lib happily measures and draws that with no error at all. A
+try/catch there would silently never detect a gap in a registered font,
+defeating the fallback chain above for the exact case it exists for.
+
 ## Accepted targets
 
 `string` (passed to `document.querySelector`), `HTMLElement`, or Angular's
