@@ -29,7 +29,7 @@ export interface PdfExportWarning {
 export type AssetTask =
   | { kind: 'img'; node: ImageNode; element: HTMLImageElement }
   | { kind: 'canvas'; node: ImageNode; element: HTMLCanvasElement }
-  | { kind: 'fallback'; node: ImageNode; element: HTMLElement; captureWidthPx: number; captureHeightPx: number };
+  | { kind: 'fallback'; node: ImageNode; element: HTMLElement; captureWidthPx: number; captureHeightPx: number; needsBleedPadding: boolean };
 
 export interface InspectResult {
   document: DocumentNode;
@@ -145,7 +145,7 @@ function visitElement(
   const unsupported = checkUnsupported(style);
   if (unsupported.unsupported) {
     warnings.push({ message: unsupported.reason!, elementDescription: describeElement(el) });
-    return buildFallbackImageNode(el, rect, visible, breakRules, unsupported.reason!, assetTasks, elRect);
+    return buildFallbackImageNode(el, rect, visible, breakRules, unsupported.reason!, assetTasks, elRect, unsupported.needsBleedPadding);
   }
 
   const paint = readBoxPaint(style);
@@ -319,7 +319,7 @@ function buildSvgNode(
     // fall through to rasterization
   }
   warnings.push({ message: 'This <svg> uses gradients/filters/text/use and is not supported; rasterized.', elementDescription: describeElement(svg as unknown as HTMLElement) });
-  return buildFallbackImageNode(svg as unknown as HTMLElement, rect, visible, breakRules, 'unsupported SVG features', assetTasks, svg.getBoundingClientRect());
+  return buildFallbackImageNode(svg as unknown as HTMLElement, rect, visible, breakRules, 'unsupported SVG features', assetTasks, svg.getBoundingClientRect(), false);
 }
 
 function buildFallbackImageNode(
@@ -330,6 +330,7 @@ function buildFallbackImageNode(
   reason: string,
   assetTasks: AssetTask[],
   elRect: DOMRect,
+  needsBleedPadding: boolean,
 ): ImageNode {
   const node: ImageNode = {
     id: nextId('fallback'),
@@ -348,7 +349,7 @@ function buildFallbackImageNode(
   // later be shrunk by fit-to-width scaling) so the clone -- which still
   // carries its original, unscaled inline styles -- isn't clipped inside
   // its own raster. See docs/architecture.md "Hybrid rendering".
-  assetTasks.push({ kind: 'fallback', node, element: el, captureWidthPx: elRect.width, captureHeightPx: elRect.height });
+  assetTasks.push({ kind: 'fallback', node, element: el, captureWidthPx: elRect.width, captureHeightPx: elRect.height, needsBleedPadding });
   return node;
 }
 

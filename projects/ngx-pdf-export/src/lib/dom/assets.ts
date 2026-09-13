@@ -26,9 +26,10 @@ export async function resolveAssets(tasks: AssetTask[], scale: number, onWarning
         } else if (task.kind === 'canvas') {
           task.node.source = { kind: 'data-url', value: task.element.toDataURL('image/png') };
         } else {
-          const result = await rasterizeElement(task.element, task.captureWidthPx, task.captureHeightPx, scale, FALLBACK_CAPTURE_PAD_PX);
+          const padPx = task.needsBleedPadding ? FALLBACK_CAPTURE_PAD_PX : 0;
+          const result = await rasterizeElement(task.element, task.captureWidthPx, task.captureHeightPx, scale, padPx);
           task.node.source = { kind: 'data-url', value: result.dataUrl };
-          const padPt = pxToPt(FALLBACK_CAPTURE_PAD_PX);
+          const padPt = pxToPt(padPx);
           task.node.rect = {
             x: task.node.rect.x - padPt,
             y: task.node.rect.y - padPt,

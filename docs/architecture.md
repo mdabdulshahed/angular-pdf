@@ -214,6 +214,19 @@ per the spec's own guidance — a canvas's content is graphical output the
 canvas API already rasterized; there is no "real" vector form to recover
 from a 2D canvas in the general case.
 
+**Only `box-shadow` and `filter` capture extra margin around the element.**
+The rasterizer's captured canvas is padded beyond the element's own border
+box only for the two effects that can genuinely paint outside it
+(`dom/unsupported-features.ts`'s `needsBleedPadding`); every other
+unsupported-feature reason (a gradient background, an unsupported
+`transform`, `display: grid`, `mix-blend-mode`) rasterizes at the element's
+*exact* rect. Padding indiscriminately was tried first and is worth naming
+as a mistake: it shifted the rasterized image's top-left corner away from
+its true position by the padding amount, visibly misaligning it against
+sibling content that didn't go through the fallback path but shares its
+left/top edge — e.g. a gradient-filled logo `<svg>` ending up a few
+millimeters left of the plain-text `<h1>` directly below it.
+
 ## Debug mode
 
 `export(target, { debug: true })` makes the pagination and layout stages
