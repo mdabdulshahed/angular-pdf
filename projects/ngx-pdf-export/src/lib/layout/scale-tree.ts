@@ -98,6 +98,6 @@ function scaleSvgCommand(cmd: SvgDrawCommand, scale: number): SvgDrawCommand {
     case 'line':
       return { ...cmd, x1: cmd.x1 * scale, y1: cmd.y1 * scale, x2: cmd.x2 * scale, y2: cmd.y2 * scale, paint };
     case 'path':
-      return { ...cmd, d: scalePathData(cmd.d, scale, scale), paint };
+      return { ...cmd, d: scalePathData(cmd.d, scale, scale), paint, originOffsetXPt: cmd.originOffsetXPt * scale, originOffsetYPt: cmd.originOffsetYPt * scale };
   }
 }

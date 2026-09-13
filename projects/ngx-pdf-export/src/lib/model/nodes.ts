@@ -127,7 +127,7 @@ export interface ImageNode extends BaseNode {
 export type SvgDrawCommand =
   | { op: 'rect'; x: number; y: number; width: number; height: number; rx: number; ry: number; paint: SvgPaint }
   | { op: 'ellipse'; cx: number; cy: number; rx: number; ry: number; paint: SvgPaint }
-  | { op: 'path'; d: string; paint: SvgPaint }
+  | { op: 'path'; d: string; paint: SvgPaint; originOffsetXPt: number; originOffsetYPt: number }
   | { op: 'line'; x1: number; y1: number; x2: number; y2: number; paint: SvgPaint };
 
 export interface SvgPaint {

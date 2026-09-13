@@ -1,6 +1,6 @@
 {
   "name": "ngx-pdf-export",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "DOM-aware, client-side Angular library that exports rendered HTML into a real, text-selectable PDF (no screenshot rasterization).",
   "license": "MIT",
   "keywords": [
